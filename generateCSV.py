@@ -1,6 +1,5 @@
 import csv # to write and read csv
 import random # to randomise values for csv
-import argparse # to take command line arguments
 
 # VARIABLES
 # csv items
@@ -9,13 +8,6 @@ csvArray = []
 
 first_row = 0
 total_rows = 10
-
-# CLI arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--csv", type=str, help='csv file name to store the generated random content')
-
-args = parser.parse_args()
-desiredCSV = args.csv
 
 # shuffle array data to randomise it
 def shuffleData(array):
