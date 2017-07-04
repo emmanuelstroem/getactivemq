@@ -37,7 +37,7 @@ def generateRowArray(inputArray):
     return allCellItems
 
 # create array of arrays with random values
-def writeToCSV():
+def writeToCSV(desiredCSV):
     for i in range(0, total_rows):
         csvArrayItem = generateRowArray(cellItems)
         # print csvArrayItem
