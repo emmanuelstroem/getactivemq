@@ -17,14 +17,10 @@ def shuffleData(array):
 # generate a 5 element array to match rows
 def generateRowArray(inputArray):
     allCellItems = []
-    extraCellItem = random.choice(inputArray)
     shuffledCellItems = shuffleData(inputArray)
 
     for item in shuffledCellItems:
         allCellItems.append(item)
-
-    # add random fifth element to array
-    allCellItems.append(extraCellItem)
 
     return allCellItems
 

@@ -8,6 +8,10 @@
     - extract
     - install using ```python setup.py install```
 
++ amqp
+    - install using ```pip install amqp```
+    - install messaging library using ```pip install python-qpid-proton```
+
 + postgres database engine
     - install from
     - database name: ```postgres```

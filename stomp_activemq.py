@@ -1,9 +1,19 @@
 import psycopg2 # to connect to postgres db #pip install psycopg2
-import stomp # to connect to activemq
+# import stomp # to connect to activemq
 import csv # to write and read csv
 import generateCSV # to be able to use functions and variables in genereateCSV
 import argparse # to take command line arguments
 import os
+import sys
+import time
+from psycopg2 import sql
+# import json
+
+from twisted.internet import defer, reactor
+
+from stompest.config import StompConfig # to connect to activemq
+from stompest.async import Stomp # to insert into activemq
+from stompest.async.listener import SubscriptionListener # to read from activemq
 
 # connect to database
 try:
@@ -12,16 +22,6 @@ except:
     print "unable to connect to the database"
 
 cursor = db_conn.cursor()
-
-
-
-# class to listen and print stomp to activemq connections
-class StompConnectionListener(stomp.ConnectionListener):
-    def on_error(self, headers, message):
-        print('received an ERROR "%s"' % message)
-    def on_message(self, headers, message):
-        print('received a message "%s"' % message)
-
 
 #VARIABLES
 
@@ -38,19 +38,13 @@ password = os.getenv("ACTIVEMQ_PASSWORD") or "admin"
 host = os.getenv("ACTIVEMQ_HOST") or "localhost"
 port = os.getenv("ACTIVEMQ_PORT") or 61613
 
-# create stomp connection
-try:
-    stomp_conn = stomp.Connection(host_and_ports = [(host, port)])
-except:
-    print 'Stomp connection FAILED!'
+def create_table():
+    try:
+        cursor.execute("""CREATE TABLE IF NOT EXISTS getactivemq (column0 text, column1 text, column2 text, column3 text, column4 text, column5 text, column6 text, column7 text, column8 text, column9 text, column10 text, column11 text)""")
+        # db_conn.commit()
+    except:
+        print "cannot create table in database"
 
-stomp_conn.start()
-stomp_conn.connect(login=user, passcode=password, wait=True)
-stomp_conn.set_listener('', StompConnectionListener())
-stomp_conn.subscribe(destination='/queue/test', id=1, ack='auto')
-
-
-generateCSV.writeToCSV(desiredCSV)
 
 # check values in database and write to dataFromDb.csv
 def readFromDb():
@@ -70,10 +64,6 @@ def readFromDb():
             # print "   ", row
             csv_writer.writerow(row)
 
-# call the function to read data from db
-readFromDb()
-
-
 
 # check values in database and write to dataFromDb.csv
 def readFromActiveMQ():
@@ -81,38 +71,88 @@ def readFromActiveMQ():
         csv_writer = csv.writer(csvfile, dialect='excel', delimiter=',',\
         quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-        try:
-            cursor.execute("""SELECT * from getactivemq""")
-        except:
-            print "cannot query table"
+messages = 0
 
-        rowsFromDb = cursor.fetchall()
+class Listener(object):
+    @defer.inlineCallbacks
+    def run(self):
+        config = StompConfig('tcp://%s:%d' % (host, port), login=user, passcode=password, version='1.1')
+        client = Stomp(config)
+        yield client.connect(host='mybroker')
 
-        # print "\nRows: \n"
-        for row in rowsFromDb:
-            # print "   ", row
-            csv_writer.writerow(row)
+        self.count = 0
+        self.start = time.time()
+        client.subscribe(destination='atcg', listener=SubscriptionListener(self.handleFrame), headers={'ack': 'auto', 'id': 'required-for-STOMP-1.1'})
+
+    @defer.inlineCallbacks
+    def handleFrame(self, client, frame):
+        if frame is not '':
+            for data in frame:
+                if data[0] == 'body':
+                    self.count += 1
+                    print data[1]
+                    print '\n'
+                    next()
+            # next()
+            print self.count
+            self.stop(client)
+        else:
+            self.stop(client)
+
+    @defer.inlineCallbacks
+    def stop(self, client):
+        print 'Disconnecting. Waiting for RECEIPT frame ...',
+        yield client.disconnect(receipt='bye')
+        print 'ok'
+
+        diff = time.time() - self.start
+        print 'Received %s frames in %f seconds' % (self.count, diff)
+        reactor.stop()
 
 
-# call the function to read data from db
 
 
-
+@defer.inlineCallbacks
 def readCSV():
+    config = StompConfig('tcp://%s:%d' % (host, port), login=user, passcode=password, version='1.1')
+    client = Stomp(config)
+    yield client.connect(host='mybroker')
+
+    count = 0
+    start = time.time()
+
     with open(desiredCSV, 'r') as readFile:
         csv_reader = csv.reader(readFile)
         for row in csv_reader:
             if row[4] != 'C' and row[4] != 'G':
 
                 try:
-                    # cursor.execute(sql.SQL("insert into {} values (%s, %s, %s, %s, %s)").format(sql.Identifier('getactivemq')), [row[0], row[1], row[2], row[3], row[4]])
-                    cursor.execute(sql.SQL("insert into {} values (%s, %s, %s, %s, %s)").format(sql.Identifier('getactivemq')), row)
-                    conn.commit()
+                    print row
+                    cursor.execute(sql.SQL("insert into {} values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)").format(sql.Identifier('getactivemq')), row)
+                    db_conn.commit()
                 except:
                     print "cannot insert into table"
 
             elif row[4] == 'C' or row[4] == 'G':
-                # print row
-                stomp_conn.send(body=' '.join(row), destination='/queue/test')
+                data = unicode(row)
+                client.send(destination='atcg', body=data, headers={'persistent': 'false'})
+                count += 1
 
-readCSV()
+            else:
+                print 'Error reading 5th column'
+    diff = time.time() - start
+    print 'Sent %s frames in %f seconds' % (count, diff)
+
+    yield client.disconnect(receipt='bye')
+
+
+# readCSV()
+
+if __name__ == '__main__':
+    create_table()
+    readCSV()
+    generateCSV.writeToCSV(desiredCSV)
+    # readFromDb()
+    # readFromActiveMQ()
+    Listener().run()
+    reactor.run()
