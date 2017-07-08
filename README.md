@@ -43,7 +43,10 @@ ___
 ___
 ### How to run the program
 ____
-- clone the project using: ```git clone ```
-- ```cd getactivemq```
-- ``` python python stomp_activemq.py -i  test.csv```
-    - where ```test.csv``` is the file name specified by the user.
+- clone the project using:
+    - ```git clone https://github.com/emmanuelstroem/getactivemq.git```
+- cd into the cloned folder:
+    - ```cd getactivemq```
+- run the program using:
+    - ``` python python stomp_activemq.py -i  test.csv```
+        - where ```test.csv``` is the file name specified by the user.
