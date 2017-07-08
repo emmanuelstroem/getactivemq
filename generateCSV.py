@@ -7,7 +7,7 @@ cellItems = ['A', 'G', 'C', 'T']
 csvArray = []
 
 first_row = 0
-total_rows = 10
+total_rows = 100
 
 # shuffle array data to randomise it
 def shuffleData(array):
@@ -17,7 +17,10 @@ def shuffleData(array):
 # generate a 5 element array to match rows
 def generateRowArray(inputArray):
     allCellItems = []
-    shuffledCellItems = shuffleData(inputArray)
+    populatedArray = inputArray*3
+
+    shuffledCellItems = shuffleData(populatedArray)
+    # print shuffledCellItems
 
     for item in shuffledCellItems:
         allCellItems.append(item)
